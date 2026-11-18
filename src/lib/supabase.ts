@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/database.types";
 
 export type SupabaseConfig = {
   url: string;
@@ -24,14 +25,14 @@ export function getSupabaseConfig(
 }
 
 /** Supabase クライアントを生成する */
-export function createSupabaseClient(): SupabaseClient {
+export function createSupabaseClient(): SupabaseClient<Database> {
   const config = getSupabaseConfig();
   if ("missing" in config) {
     throw new Error(
       `Supabase の環境変数が設定されていません: ${config.missing.join(", ")}`,
     );
   }
-  return createClient(config.url, config.anonKey);
+  return createClient<Database>(config.url, config.anonKey);
 }
 
 /**
