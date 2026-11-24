@@ -1,3 +1,6 @@
+import { PencilIcon, Trash2Icon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardAction, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Task } from "@/lib/task";
 
 type TaskCardProps = {
@@ -8,31 +11,40 @@ type TaskCardProps = {
 
 export function TaskCard({ task, onEdit, onDelete }: TaskCardProps) {
   return (
-    <article className="rounded-md border border-zinc-200 bg-background p-3 shadow-sm dark:border-zinc-800">
-      <h3 className="break-words font-medium">{task.title}</h3>
-      {task.description && (
-        <p className="mt-1 whitespace-pre-wrap break-words text-sm text-zinc-600 dark:text-zinc-400">
-          {task.description}
-        </p>
-      )}
-      <div className="mt-3 flex justify-end gap-2 text-sm">
-        <button
-          type="button"
-          onClick={() => onEdit(task)}
-          aria-label={`「${task.title}」を編集`}
-          className="rounded px-2 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-        >
-          編集
-        </button>
-        <button
-          type="button"
-          onClick={() => onDelete(task)}
-          aria-label={`「${task.title}」を削除`}
-          className="rounded px-2 py-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
-        >
-          削除
-        </button>
-      </div>
-    </article>
+    <Card
+      size="sm"
+      className="group/task shadow-xs transition-shadow hover:shadow-md hover:ring-foreground/15"
+    >
+      <CardHeader>
+        <CardTitle className="break-words">
+          <h3>{task.title}</h3>
+        </CardTitle>
+        {task.description && (
+          <CardDescription className="line-clamp-4 whitespace-pre-wrap break-words">
+            {task.description}
+          </CardDescription>
+        )}
+        <CardAction className="-mt-1 -mr-1 flex gap-0.5 transition-opacity pointer-fine:opacity-0 pointer-fine:group-hover/task:opacity-100 pointer-fine:group-focus-within/task:opacity-100">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => onEdit(task)}
+            aria-label={`「${task.title}」を編集`}
+            className="text-muted-foreground"
+          >
+            <PencilIcon />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => onDelete(task)}
+            aria-label={`「${task.title}」を削除`}
+            className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+          >
+            <Trash2Icon />
+          </Button>
+        </CardAction>
+      </CardHeader>
+    </Card>
   );
 }

@@ -1,10 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { InboxIcon, PlusIcon } from "lucide-react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { TaskCard } from "@/components/TaskCard";
 import { TaskFormDialog } from "@/components/TaskFormDialog";
-import { TASK_STATUSES, type Task, type TaskActions, type UnvalidatedTaskInput } from "@/lib/task";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { TASK_STATUSES, type Task, type TaskActions, type TaskStatus, type UnvalidatedTaskInput } from "@/lib/task";
 
 type KanbanBoardProps = {
   initialTasks: Task[];
@@ -18,6 +22,13 @@ type DialogState =
   | { type: "delete"; task: Task };
 
 const emptyInput: UnvalidatedTaskInput = { title: "", description: "", status: "todo" };
+
+/** 列見出しの横に表示する色付きドット（ステータスを色でも見分けられるようにする） */
+const statusDotClassName: Record<TaskStatus, string> = {
+  todo: "bg-slate-400",
+  in_progress: "bg-blue-500",
+  done: "bg-emerald-500",
+};
 
 /**
  * タスクを3列のカンバンで表示し、追加・編集・削除を行う。
@@ -55,18 +66,16 @@ export function KanbanBoard({ initialTasks, actions }: KanbanBoardProps) {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={() => setDialog({ type: "create" })}
-          className="rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background"
-        >
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center justify-between gap-4">
+        <p className="text-sm text-muted-foreground">全 {tasks.length} 件のタスク</p>
+        <Button size="lg" onClick={() => setDialog({ type: "create" })} className="px-3.5">
+          <PlusIcon data-icon="inline-start" />
           タスクを追加
-        </button>
+        </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid items-start gap-4 md:grid-cols-3">
         {TASK_STATUSES.map((status) => {
           const columnTasks = tasks.filter((task) => task.status === status.value);
           const headingId = `column-${status.value}`;
@@ -74,16 +83,24 @@ export function KanbanBoard({ initialTasks, actions }: KanbanBoardProps) {
             <section
               key={status.value}
               aria-labelledby={headingId}
-              className="flex flex-col gap-3 rounded-lg bg-zinc-100 p-3 dark:bg-zinc-900"
+              className="flex flex-col gap-3 rounded-2xl border bg-muted/50 p-3"
             >
-              <div className="flex items-center justify-between">
-                <h2 id={headingId} className="font-semibold">
-                  {status.label}
-                </h2>
-                <span className="text-sm text-zinc-500">{columnTasks.length}件</span>
+              <div className="flex items-center justify-between px-1 pt-1">
+                <div className="flex items-center gap-2">
+                  <span aria-hidden="true" className={cn("size-2 rounded-full", statusDotClassName[status.value])} />
+                  <h2 id={headingId} className="text-sm font-semibold">
+                    {status.label}
+                  </h2>
+                </div>
+                <Badge variant="outline" className="bg-background text-muted-foreground tabular-nums">
+                  {columnTasks.length}件
+                </Badge>
               </div>
               {columnTasks.length === 0 ? (
-                <p className="py-4 text-center text-sm text-zinc-500">タスクはありません</p>
+                <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed bg-background/60 px-4 py-8 text-muted-foreground">
+                  <InboxIcon aria-hidden="true" className="size-5" />
+                  <p className="text-sm">タスクはありません</p>
+                </div>
               ) : (
                 <ul className="flex flex-col gap-2">
                   {columnTasks.map((task) => (

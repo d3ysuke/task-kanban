@@ -18,6 +18,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `src/app/actions.ts`（`"use server"`）: 入力検証 → リポジトリ呼び出し → `ActionResult<T>`（`{ ok: true, data }` / `{ ok: false, error, fieldErrors? }`）を返す。例外は投げず、日本語メッセージに変換する
 - `src/lib/task.ts`: `Task` 型、`TASK_STATUSES`（列定義とラベル）、`validateTaskInput`（クライアント・サーバー共通）。文字数はコードポイント数で数える（DB の `char_length` に合わせるため）
 - `src/lib/taskRepository.ts`: Supabase の CRUD。第1引数でクライアントを受け取り、snake_case の行を camelCase の `Task` に変換する。DB の `status` は `text` 型なので、`isTaskStatus` で検証してから `TaskStatus` として扱う
+- `src/components/ui/`: shadcn/ui の CLI が生成した UI 部品（alert / alert-dialog / badge / button / card / dialog / input / label / native-select / skeleton / textarea）。画面はすべてこれらの部品とテーマトークンで組んでいる
+  - 追加・編集ダイアログは `Dialog`、削除確認は `AlertDialog`（確定ボタンは `AlertDialogAction` ではなく通常の `Button`。失敗時にダイアログを閉じずにエラーを出すため）。どちらも親が条件付きで描画し、常に `open` で使う
+  - ステータス欄は `NativeSelect`（中身はネイティブ `<select>` なので、テストでは `user.selectOptions` が使える）
+  - カードの編集・削除ボタンはアイコンのみ（名前は `aria-label`）。マウス操作の環境（`pointer-fine`）ではホバー／フォーカス時だけ表示する
+- `src/lib/utils.ts`: `export { cn } from "cn"` のみ（shadcn/ui の CLI が生成）
 
 ### データの流れ
 
@@ -79,7 +84,14 @@ npx vitest run -t "見出し"            # テスト名で絞り込み
 - **App Router**、ソースは `src/` 配下。インポートエイリアス `@/*` → `src/*`。
 - `next.config.ts` で `cacheComponents` と `partialPrefetching` が有効。データ取得やキャッシュの挙動はこれらの前提で考えること。
 - レイアウトの props は Next.js が生成するグローバル型 `LayoutProps<"/">` を使っている（型は `next build` / `next dev` 時に `.next/types` に生成される）。
-- **Tailwind CSS 4**。PostCSS 設定ファイルはなく、`next.config.ts` の Turbopack ルール（`@tailwindcss/turbopack` ローダー）で `*.css` を処理している。テーマトークンは `src/app/globals.css` の `@theme inline` で定義（`--color-background` / `--color-foreground`、ダークモードは `prefers-color-scheme`）。
+- **Tailwind CSS 4**。PostCSS 設定ファイルはなく、`next.config.ts` の Turbopack ルール（`@tailwindcss/turbopack` ローダー）で `*.css` を処理している。テーマトークンは `src/app/globals.css` で定義する（下記の shadcn/ui の項を参照）。
+- **shadcn/ui**（設定は `components.json`: style `base-nova`、ベースカラー `neutral`、アイコン `lucide`）。
+  - 部品は `npx shadcn@latest add <name>` で `src/components/ui/` に追加する。生成されたファイルはプロジェクトのコードとして扱い、必要に応じて編集してよい。
+  - 土台のライブラリは **Base UI**（`@base-ui/react`）。Radix UI ではないので、props の型（例: `ButtonPrimitive.Props`）や API は Base UI のドキュメントで確認する。バリアントは `class-variance-authority`。
+  - `cn` は `cn` パッケージのもの（`clsx` + `tailwind-merge` ではない）。生成された部品は `"cn"` から直接 import するが、自前のコードは `@/lib/utils` から import する。
+  - CLI の手順や API は変わりやすいので、context7 MCP などで最新のドキュメントを確認してから使う。
+- **テーマ（`src/app/globals.css`）**: `tw-animate-css` と `shadcn/tailwind.css` を読み込む。色は `:root`（ライト）/ `.dark`（ダーク）の CSS 変数（oklch）で定義し、`@theme inline` で `bg-primary` / `text-muted-foreground` / `border-border` などのユーティリティにしている。新しい UI では `zinc-*` などの直接指定より、これらのトークンを使う。
+- **ダークモードは `.dark` クラスで切り替える**（`@custom-variant dark (&:is(.dark *))`）。`prefers-color-scheme` ではない。いまは `.dark` を付ける仕組み（`next-themes` など）がないため、OS の設定にかかわらず常にライト表示になり、既存コードの `dark:` クラスも効かない。
 - Supabase（データベース）
 - Vitest + Test Library（テスト）
 - Vercel（デプロイ）
@@ -121,6 +133,7 @@ npx vitest run -t "見出し"            # テスト名で絞り込み
 | `KanbanBoard` | `TaskActions` を `vi.fn<TaskActions["createTask"]>()` などで作り、props で渡す（Server Actions を import しない） |
 | `checkSupabaseConnection` | 引数 `fetchFn` にモックを渡す |
 
+- Base UI のモーダル（`Dialog` / `AlertDialog`）を開いている間は背景が `aria-hidden` になり、`getByRole` で背景の要素（列の region など）が見つからない。ダイアログ表示中に背景を調べるときは `{ hidden: true }` を渡す
 - エラーの経路では本番コードが `console.error` を出すので、テストでは `vi.spyOn(console, "error").mockImplementation(() => {})` で出力を抑え、`afterEach` で `vi.restoreAllMocks()` する。
 - 偽クライアントはクエリ1回分の結果しか返せない。1つの処理で複数回クエリを実行するようになったら、結果を順番に返せるよう拡張する。
 - `src/lib/testing/` はテスト用のヘルパー置き場。ここには `*.test.ts` を置かない（置くとテストとして実行される）。
@@ -129,6 +142,59 @@ npx vitest run -t "見出し"            # テスト名で絞り込み
 
 - 開発サーバーがすでに :3000 で起動していることが多い（2台目は起動できない）。起動中のサーバーを止めずに、そのサーバーで確認する。
 - 画面操作で確認したら、Supabase MCP の `execute_sql` で `tasks` テーブルに反映されたかを確かめ、確認用に作ったデータは削除しておく。
+
+## デザインルール
+
+画面は shadcn/ui（base-nova）の部品とテーマトークンで組む。新しい UI を作るときも以下に合わせる。
+
+### 部品の選び方
+
+- **既存の shadcn 部品を先に探す**。素の `<button>` / `<input>` / 自作モーダルは作らない。足りない部品は `npx shadcn@latest add <name>` で追加してから使う。
+- 用途ごとの部品:
+
+| 用途 | 部品 | 備考 |
+|---|---|---|
+| ボタン | `Button` | 主操作は `default`、取消は `outline`、カード上の操作は `ghost` + `size="icon-sm"`、破壊的操作は `destructive` |
+| 入力フォームのダイアログ | `Dialog` | `showCloseButton={false}`（×ボタンの名前「Close」がテストと衝突しうるため）。フッターは `DialogFooter` |
+| 破壊的操作の確認 | `AlertDialog` | `AlertDialogMedia` でアイコンを出す。確定ボタンは通常の `Button`（`AlertDialogAction` は押すと閉じるため失敗時にエラーを出せない） |
+| 選択肢（少数・固定） | `NativeSelect` | ネイティブ `<select>` なのでモバイルで OS 標準のピッカーが出て、テストも `selectOptions` で書ける |
+| エラー表示 | `Alert variant="destructive"` | 先頭に `CircleAlertIcon`。`role="alert"` が付く |
+| 項目のエラー | `<p className="text-sm text-destructive">` | 入力欄の `aria-invalid` / `aria-describedby` と組で使う |
+| 件数などの小さなラベル | `Badge` | 列の件数は `variant="outline"` + `bg-background` |
+| 一覧の要素 | `Card size="sm"` | `CardHeader` / `CardTitle` / `CardDescription` / `CardAction` |
+| 読み込み中 | `Skeleton` | 実際のレイアウトに近い形で並べる。スクリーンリーダー向けに「読み込み中…」の文字も残す |
+
+### 色
+
+- **色はテーマトークンを使う**（`bg-background` / `bg-muted` / `text-muted-foreground` / `border` / `text-destructive` / `bg-primary` など）。`zinc-*` や `red-*` などの直接指定はしない。
+- 例外は**ステータスの識別色**だけ（`KanbanBoard` の `statusDotClassName`: 未着手 `slate-400` / 進行中 `blue-500` / 完了 `emerald-500`）。色だけに頼らず、必ずラベルの文字と一緒に表示する。
+- 白黒（neutral）を基調にし、色は「主操作（primary）」「破壊的操作・エラー（destructive）」「ステータス」に絞る。
+
+### レイアウトと形
+
+- ページは `max-w-6xl` で中央寄せ、余白は `px-4 sm:px-6` / `py-10`。セクション間は `gap-6`〜`gap-8`、列やカードの間は `gap-2`〜`gap-4`。
+- 角丸は外側ほど大きくする: 列の枠 `rounded-2xl` → 空表示の枠 `rounded-xl` → カード（`Card` の既定）。
+- 列の背景は `bg-muted/50` + `border`、その上のカードは白（`bg-card`）で浮かせる。影は控えめに（`shadow-xs`、ホバーで `shadow-md`）。
+- 3列は `md:grid-cols-3`、モバイルでは縦に積む。列は `items-start` で高さを揃えない。
+- 空の状態は「点線枠（`border-dashed`）+ アイコン + 短い文言」で表示する。
+
+### アイコン
+
+- `lucide-react` を使う（`PlusIcon` / `PencilIcon` / `Trash2Icon` / `InboxIcon` / `CircleAlertIcon` など）。
+- ボタン内で文字と並べるときは `data-icon="inline-start"` を付ける（`Button` が余白を調整する）。
+- 飾りのアイコンには `aria-hidden="true"`、アイコンだけのボタンには `aria-label` を必ず付ける。
+
+### 操作と状態
+
+- カードの操作ボタンは、マウス操作の環境（`pointer-fine:`）ではホバー／フォーカス時だけ表示し、タッチ端末では常に表示する。`md:` などの画面幅では切り替えない（タブレットで押せなくなるため）。
+- ダイアログは Esc・背景クリックでも閉じられるようにし、送信中は閉じない（`onOpenChange` で `pending` を見る）。
+- 送信中はボタンを `disabled` にして文言を変える（「保存中…」「削除中…」）。
+- 文言は日本語で短く。入力欄には `placeholder` で例を示す（例: 「例: 企画書を作成する」）。
+
+### デザイン変更後の確認
+
+- `npm test` に加えて、Playwright MCP でデスクトップ幅（1280）とモバイル幅（390）のスクリーンショットを撮り、ダイアログを開いた状態も確認する。スクリーンショットは `.playwright-mcp/` に保存する（Playwright MCP はリポジトリ外に書き込めない）。
+- ブラウザのコンソールにエラー・警告が出ていないことを確認する。
 
 ## コーディングルール
 

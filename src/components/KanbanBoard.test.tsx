@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { Task, TaskActions } from "@/lib/task";
@@ -28,7 +28,9 @@ function setup(initialTasks: Task[] = [], overrides: Partial<TaskActions> = {}) 
   return { user, actions };
 }
 
-const column = (name: string) => screen.getByRole("region", { name });
+// モーダル表示中は背景がアクセシビリティツリーから隠れるため、その間に列を調べるときは hidden: true を渡す
+const column = (name: string, options: { hidden?: boolean } = {}) =>
+  screen.getByRole("region", { name, ...options });
 
 describe("KanbanBoard", () => {
   describe("一覧表示", () => {
@@ -207,7 +209,7 @@ describe("KanbanBoard", () => {
       const dialog = screen.getByRole("dialog", { name: "タスクを追加" });
       expect(within(dialog).getByRole("alert")).toHaveTextContent("タスクの追加に失敗しました");
       expect(within(dialog).getByLabelText("タイトル")).toHaveValue("失敗するタスク");
-      expect(within(column("未着手")).getByText("タスクはありません")).toBeInTheDocument();
+      expect(within(column("未着手", { hidden: true })).getByText("タスクはありません")).toBeInTheDocument();
     });
 
     it("サーバーが項目ごとのエラーを返した場合、該当項目にエラーを表示する", async () => {
@@ -244,7 +246,7 @@ describe("KanbanBoard", () => {
       expect(createTask).toHaveBeenCalledTimes(1);
 
       resolve({ ok: true, data: buildTask({ title: "a" }) });
-      expect(await within(column("未着手")).findByText("a")).toBeInTheDocument();
+      await waitFor(() => expect(within(column("未着手")).getByText("a")).toBeInTheDocument());
     });
 
     it("キャンセルすると、追加せずにダイアログを閉じる", async () => {

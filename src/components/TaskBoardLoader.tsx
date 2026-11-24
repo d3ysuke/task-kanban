@@ -1,5 +1,7 @@
 import { createTaskAction, deleteTaskAction, updateTaskAction } from "@/app/actions";
+import { CircleAlertIcon } from "lucide-react";
 import { KanbanBoard } from "@/components/KanbanBoard";
+import { Alert, AlertTitle } from "@/components/ui/alert";
 import { createSupabaseClient } from "@/lib/supabase";
 import type { Task, TaskActions } from "@/lib/task";
 import { listTasks } from "@/lib/taskRepository";
@@ -24,9 +26,10 @@ export async function TaskBoardLoader() {
   const tasks = await loadTasks();
   if (tasks === null) {
     return (
-      <p role="alert" className="rounded-md bg-red-50 px-4 py-3 text-red-700 dark:bg-red-950 dark:text-red-300">
-        タスクの取得に失敗しました。時間をおいて再読み込みしてください。
-      </p>
+      <Alert variant="destructive" className="border-destructive/30 bg-destructive/5 px-4 py-3">
+        <CircleAlertIcon />
+        <AlertTitle>タスクの取得に失敗しました。時間をおいて再読み込みしてください。</AlertTitle>
+      </Alert>
     );
   }
   return <KanbanBoard initialTasks={tasks} actions={taskActions} />;

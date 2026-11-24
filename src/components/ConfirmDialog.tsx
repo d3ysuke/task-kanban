@@ -1,6 +1,18 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useState } from "react";
+import { CircleAlertIcon, Trash2Icon } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 
 type ConfirmDialogProps = {
   heading: string;
@@ -13,7 +25,6 @@ type ConfirmDialogProps = {
 
 /** 破壊的な操作の前に表示する確認ダイアログ */
 export function ConfirmDialog({ heading, message, confirmLabel, onConfirm, onCancel }: ConfirmDialogProps) {
-  const id = useId();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,43 +40,43 @@ export function ConfirmDialog({ heading, message, confirmLabel, onConfirm, onCan
   }
 
   return (
-    <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/40 p-4">
-      <div
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby={`${id}-heading`}
-        aria-describedby={`${id}-message`}
-        className="w-full max-w-sm rounded-lg bg-background p-6 shadow-xl"
-      >
-        <h2 id={`${id}-heading`} className="mb-2 text-lg font-semibold">
-          {heading}
-        </h2>
-        <p id={`${id}-message`} className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
-          {message}
-        </p>
+    <AlertDialog
+      open
+      onOpenChange={(open) => {
+        // Esc で閉じる。削除中は閉じない
+        if (!open && !pending) onCancel();
+      }}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogMedia className="bg-destructive/10 text-destructive">
+            <Trash2Icon />
+          </AlertDialogMedia>
+          <AlertDialogTitle className="text-lg font-semibold">{heading}</AlertDialogTitle>
+          <AlertDialogDescription>{message}</AlertDialogDescription>
+        </AlertDialogHeader>
         {error && (
-          <p role="alert" className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
-            {error}
-          </p>
+          <Alert variant="destructive">
+            <CircleAlertIcon />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         )}
-        <div className="flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-md px-4 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
-          >
+        <AlertDialogFooter>
+          <Button type="button" variant="outline" onClick={onCancel}>
             キャンセル
-          </button>
-          <button
+          </Button>
+          {/* AlertDialogAction は押すと閉じてしまうため、失敗時にエラーを出せるよう通常のボタンを使う */}
+          <Button
             type="button"
+            variant="destructive"
             onClick={handleConfirm}
             disabled={pending}
-            className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+            className="bg-destructive text-white hover:bg-destructive/90"
           >
             {pending ? "削除中…" : confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

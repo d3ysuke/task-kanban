@@ -1,6 +1,14 @@
 "use client";
 
 import { useId, useState, type FormEvent } from "react";
+import { CircleAlertIcon } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { Textarea } from "@/components/ui/textarea";
 import {
   TASK_STATUSES,
   validateTaskInput,
@@ -17,8 +25,13 @@ type TaskFormDialogProps = {
   onCancel: () => void;
 };
 
-const fieldClassName =
-  "w-full rounded-md border border-zinc-300 bg-background px-3 py-2 text-sm aria-[invalid=true]:border-red-500 dark:border-zinc-700";
+function FieldError({ id, message }: { id?: string; message: string }) {
+  return (
+    <p id={id} className="text-sm text-destructive">
+      {message}
+    </p>
+  );
+}
 
 /** タスクの追加・編集に使う入力ダイアログ。保存に成功したら親が閉じる */
 export function TaskFormDialog({ heading, initialValue, onSubmit, onCancel }: TaskFormDialogProps) {
@@ -51,97 +64,81 @@ export function TaskFormDialog({ heading, initialValue, onSubmit, onCancel }: Ta
   }
 
   return (
-    <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/40 p-4">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={`${id}-heading`}
-        className="w-full max-w-md rounded-lg bg-background p-6 shadow-xl"
-      >
-        <h2 id={`${id}-heading`} className="mb-4 text-lg font-semibold">
-          {heading}
-        </h2>
-        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        // Esc や背景クリックで閉じる。保存中は閉じない
+        if (!open && !pending) onCancel();
+      }}
+    >
+      <DialogContent showCloseButton={false} className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="text-lg font-semibold">{heading}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
           {formError && (
-            <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
-              {formError}
-            </p>
+            <Alert variant="destructive">
+              <CircleAlertIcon />
+              <AlertDescription>{formError}</AlertDescription>
+            </Alert>
           )}
-          <div className="flex flex-col gap-1">
-            <label htmlFor={`${id}-title`} className="text-sm font-medium">
-              タイトル
-            </label>
-            <input
+          <div className="flex flex-col gap-2">
+            <Label htmlFor={`${id}-title`}>タイトル</Label>
+            <Input
               id={`${id}-title`}
               type="text"
               value={value.title}
               onChange={(event) => setValue({ ...value, title: event.target.value })}
+              placeholder="例: 企画書を作成する"
               aria-invalid={fieldErrors.title ? true : undefined}
               aria-describedby={fieldErrors.title ? `${id}-title-error` : undefined}
-              className={fieldClassName}
             />
-            {fieldErrors.title && (
-              <p id={`${id}-title-error`} className="text-sm text-red-600">
-                {fieldErrors.title}
-              </p>
-            )}
+            {fieldErrors.title && <FieldError id={`${id}-title-error`} message={fieldErrors.title} />}
           </div>
-          <div className="flex flex-col gap-1">
-            <label htmlFor={`${id}-description`} className="text-sm font-medium">
-              説明
-            </label>
-            <textarea
+          <div className="flex flex-col gap-2">
+            <Label htmlFor={`${id}-description`}>説明</Label>
+            <Textarea
               id={`${id}-description`}
               rows={4}
               value={value.description}
               onChange={(event) => setValue({ ...value, description: event.target.value })}
+              placeholder="詳細やメモ（任意）"
               aria-invalid={fieldErrors.description ? true : undefined}
               aria-describedby={fieldErrors.description ? `${id}-description-error` : undefined}
-              className={fieldClassName}
+              className="min-h-24 resize-y"
             />
             {fieldErrors.description && (
-              <p id={`${id}-description-error`} className="text-sm text-red-600">
-                {fieldErrors.description}
-              </p>
+              <FieldError id={`${id}-description-error`} message={fieldErrors.description} />
             )}
           </div>
-          <div className="flex flex-col gap-1">
-            <label htmlFor={`${id}-status`} className="text-sm font-medium">
-              ステータス
-            </label>
-            <select
+          <div className="flex flex-col gap-2">
+            <Label htmlFor={`${id}-status`}>ステータス</Label>
+            <NativeSelect
               id={`${id}-status`}
               value={value.status}
               onChange={(event) => setValue({ ...value, status: event.target.value })}
               aria-invalid={fieldErrors.status ? true : undefined}
-              className={fieldClassName}
+              aria-describedby={fieldErrors.status ? `${id}-status-error` : undefined}
+              className="w-full"
             >
               {TASK_STATUSES.map((status) => (
-                <option key={status.value} value={status.value}>
+                <NativeSelectOption key={status.value} value={status.value}>
                   {status.label}
-                </option>
+                </NativeSelectOption>
               ))}
-            </select>
-            {fieldErrors.status && <p className="text-sm text-red-600">{fieldErrors.status}</p>}
+            </NativeSelect>
+            {fieldErrors.status && <FieldError id={`${id}-status-error`} message={fieldErrors.status} />}
           </div>
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="rounded-md px-4 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
-            >
+          <DialogFooter className="mt-1">
+            <Button type="button" variant="outline" onClick={onCancel}>
               キャンセル
-            </button>
-            <button
-              type="submit"
-              disabled={pending}
-              className="rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
-            >
+            </Button>
+            <Button type="submit" disabled={pending}>
               {pending ? "保存中…" : "保存"}
-            </button>
-          </div>
+            </Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
